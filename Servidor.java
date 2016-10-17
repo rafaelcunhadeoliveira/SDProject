@@ -1,180 +1,41 @@
-import java.util.ArrayList;
-import java.util.TreeMap;
-import java.util.Date;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 /**
  * Created by Rafael on 15/09/2016.
  */
 public class Servidor {
 
-    public TreeMap <String, String> database = new TreeMap<>();
-    public TreeMap<String, MetadataNode> metadata = new TreeMap<>();
-    public String response = "";
-    public int  responseCode = 400;
-    private final int tamanhoNo = 1024;
-    public DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-    public Date date = new Date();
-    String temp = "";
-    int length = 0;
-    String metadataCreation = "";
-    String metadataModification = "";
-    String metadataVersion = "";
-    String lengthStatement = "";
 
-    MetadataNode nodeValue = new MetadataNode(dateToString(date), "-");
 
-    public Servidor(String key, String value)
-    {
-        database.put(key, value);
-        metadata.put(key, nodeValue);
-    }
-    public boolean isEmpty()
-    {
-        return database.isEmpty();
+    public static int porta = 5000;
+    public static void main (String[] args) throws IOException {
+
+//        for (String arg : args){
+//            if(arg.contains("Porta:")){
+//                String[] argPorta = arg.split(":");
+//                porta = Integer.parseInt(argPorta[1]);
+//            }
+//        }
+        Servidor x = new Servidor();
+        x.StartDbServer(porta);
     }
 
-    public boolean Search (String key)
-    {
-        return database.containsKey(key);
-    }
+    public void StartDbServer(int porta)throws IOException {
 
-    public String dateToString(Date data){
-        String tempData = dateFormat.format(data);
-        return tempData;
-    }
+        ServerSocket socket = new ServerSocket(porta);
 
-    public  String GetRequest(String key)
-    {
-        try {
-            if (Search(key) == true) {
-                responseCode = 200;
-                length = database.get(key).length();
-                metadata.get(key).value();
-                metadataCreation = metadata.get(key).creationStatement;
-                metadataModification = metadata.get(key).modificationStatement;
-                metadataVersion = metadata.get(key).versionStatement;
-                lengthStatement = "Content-Length: "+length;
-                return database.get(key);
-            } else {
-                responseCode = 404;
-                return "Not Found";
-            }
-        } catch (Exception e) {
-            responseCode = 505;
-            return "Bad Request";
+        while(true){
+            Socket acceptance = socket.accept();
+            Database database = new Database("1","Primeiro no");
+            SistemaArquivos responder = new SistemaArquivos(acceptance.getInputStream(), acceptance.getOutputStream(), database);
+            Thread x = new Thread(responder);
+            x.start();
         }
+
     }
 
-    public String PostRequest(String key, String value)
-    {
-        try {
-            if (value.length() < tamanhoNo) {
-                if (Search(key) != true) {
-                    database.putIfAbsent(key, value);
-                    Date cDate = new Date();
-                    temp = dateToString(cDate);
-                    MetadataNode nValue = new MetadataNode(temp, "-");
-                    metadata.put(key, nValue);
-                    length = database.get(key).length();
-                    metadata.get(key).value();
-                    metadataCreation = metadata.get(key).creationStatement;
-                    metadataModification = metadata.get(key).modificationStatement;
-                    metadataVersion = metadata.get(key).versionStatement;
-                    lengthStatement = "Content-Length: "+length;
-                    responseCode = 200;
-                    return "POST in: "+key+" as: "+value;
-                } else {
-                    responseCode = 400;
-                    return "Bad Request";
-                }
-            } else {
-                responseCode = 400;
-                return "Bad Request";
-            }
-        } catch (Exception e) {
-            responseCode = 505;
-            return "Bad Request";
-        }
-    }
-
-    public String DeleteRequest(String key)
-    {
-        try {
-            if (Search(key) == true) {
-                metadata.get(key).value();
-                metadataCreation = metadata.get(key).creationStatement;
-                metadataModification = metadata.get(key).modificationStatement;
-                metadataVersion = metadata.get(key).versionStatement;
-                lengthStatement = "Content-Length: "+length;
-                database.remove(key);
-                metadata.remove(key);
-                responseCode = 200;
-
-                return "Node Deleted";
-            } else {
-                responseCode = 404;
-                return "Not Found";
-            }
-        } catch (Exception e) {
-            responseCode = 505;
-            return "Bad Request";
-        }
-    }
-
-    public String PutRequest(String key, String value) {
-        try {
-            if (value.length() < tamanhoNo) {
-                if (Search(key) == true) {
-                    database.put(key, value);
-                    Date mDate = new Date();
-                    temp = dateToString(mDate);
-                    metadata.get(key).setModification(temp);
-                    metadata.get(key).newVersion();
-                    length = database.get(key).length();
-                    metadata.get(key).value();
-                    metadataCreation = metadata.get(key).creationStatement;
-                    metadataModification = metadata.get(key).modificationStatement;
-                    metadataVersion = metadata.get(key).versionStatement;
-                    lengthStatement = "Content-Length: "+length;
-                    responseCode = 200;
-                    return "PUT in: "+key+" as: "+value;
-                } else {
-                    responseCode = 404;
-                    return "Not Found";
-                }
-            } else {
-                responseCode = 505;
-                return "Bad Request";
-            }
-        } catch (Exception e) {
-            responseCode = 505;
-            return "Bad Request";
-        }
-    }
-
-    public  String HeadRequest(String key)
-    {
-        try {
-            if (Search(key) == true) {
-                responseCode = 200;
-                metadata.get(key).value();
-                metadataCreation = metadata.get(key).creationStatement;
-                metadataModification = metadata.get(key).modificationStatement;
-                metadataVersion = metadata.get(key).versionStatement;
-                lengthStatement = "Content-Length: "+length;
-                response = "The metadatas of the node: "+key+ " are: " + metadata.get(key).creationStatement+" "+metadata.get(key).modificationStatement +" "+metadata.get(key).versionStatement;;
-                return response;
-            } else {
-                responseCode = 404;
-                return "Not Found";
-            }
-        } catch (Exception e) {
-            responseCode = 505;
-            return "Bad Request";
-        }
-    }
 
 }
 
